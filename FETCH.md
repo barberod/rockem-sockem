@@ -18,11 +18,15 @@ The codebase for the pull request is in the following directory: `{project-repo-
 
 ## Task
 
-Now, you will scan the Pull Request for unresolved conversations.
+Now, you will scan the Pull Request for comments to process.
+
+**Default behavior:** Gather comments from unresolved conversations only.
+
+**If `unanswered` mode is active:** Also gather comments from resolved conversations where the original reviewer comment received no reply. These are comments that were marked resolved without being addressed in the conversation thread. Tag each such comment with `[resolved-unanswered]` in the output so subsequent phases can distinguish them from unresolved comments.
 
 ## Elements
 
-Create a markdown file containing these elements from any comments, unless they are part of a conversation that is already resolved.
+Create a markdown file containing these elements from qualifying comments (per the rules above).
 
 - number (you will create this; auto-increment from 1)
 
