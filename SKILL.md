@@ -5,13 +5,15 @@ description: Automate the processing of comments on GitHub pull requests written
 
 # Rockem Sockem
 
-**When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for unresolved PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch.
+**When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch. By default processes unresolved comments; with `unanswered`, also includes resolved but unanswered comments.
 
-**Usage:** `/rockem-sockem [item-id] [quiet]`
+**Usage:** `/rockem-sockem [item-id] [quiet] [private] [unanswered]`
 
 - If `item-id` is passed, Step 3 skips the prompt and uses it directly (still validated).
 - If `quiet` is passed, the skill runs in quiet mode (see Step 4e below).
-- Both can be combined: `/rockem-sockem 19739 quiet`
+- If `private` is passed, the Respond phase (Step 9) is skipped entirely — no comments are posted to GitHub.
+- If `unanswered` is passed, the Fetch phase also gathers resolved conversations that received no reply — not just unresolved ones.
+- All can be combined: `/rockem-sockem 19739 quiet private unanswered`
 
 ## Overview
 
@@ -131,7 +133,7 @@ Execute each phase **in order**. For each phase:
 | 6 | ⬇️ | Fetch | `FETCH.md` | `comments_{timestamp}.md` |
 | 7 | 📊 | Evaluate | `EVALUATE.md` | `evaluation_{timestamp}.md` |
 | 8 | 📐 | Formulate | `FORMULATE.md` | `plan_{timestamp}.md` |
-| 9 | 💬 | Respond | `RESPOND.md` | Comments posted to GitHub PR |
+| 9 | 💬 | Respond | `RESPOND.md` | Comments posted to GitHub PR *(skipped if `private`)* |
 | 10 | 🏗️ | Implement | `IMPLEMENT.md` | Code changes in the repo |
 | 11 | 🤔 | Sanity Check | `SANITYCHECK.md` | `sanity-check_{timestamp}.md` |
 | 12 | 📓 | Glean | `GLEAN.md` | `lessons_{timestamp}.md` |
@@ -143,7 +145,8 @@ All markdown output files are saved to: `{personal-dir-location}/notes/{year}/{m
 
 The process is finished. Inform the user:
 
-1. Responses have been posted to unresolved PR comment threads, but the user must still **manually mark each conversation as resolved** in GitHub.
+1. If `private` was **not** used: Responses have been posted to unresolved PR comment threads, but the user must still **manually mark each conversation as resolved** in GitHub.
+   If `private` **was** used: No comments were posted. The drafted responses are in the evaluation file for manual review.
 2. New commits have been created on the designated branch, but the user must still **push** them.
 
 All time-bound and run-scoped variables are now unset. A fresh `/rockem-sockem` invocation will set its own values.
