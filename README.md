@@ -1,6 +1,6 @@
 # Rockem Sockem
 
-A [Claude Code](https://claude.ai/code) skill that automates processing of unresolved PR review comments. It fetches comments from GitHub Copilot, Claude, or human reviewers, evaluates them, formulates a plan, posts responses, implements fixes, and commits the results -- all in one invocation.
+A [Claude Code](https://claude.ai/code) skill that automates processing of PR review comments. It fetches comments from GitHub Copilot, Claude, or human reviewers, evaluates them, formulates a plan, posts responses, implements fixes, and commits the results -- all in one invocation.
 
 ## Pipeline
 
@@ -8,7 +8,7 @@ The skill runs 8 sequential phases:
 
 | | Phase | What it does | Output |
 |---|-------|-------------|--------|
-| ⬇️ | **Fetch** | Pulls unresolved PR comments from GitHub | `comments_{timestamp}.md` |
+| ⬇️ | **Fetch** | Pulls PR comments from GitHub (unresolved; +unanswered resolved if param set) | `comments_{timestamp}.md` |
 | 📊 | **Evaluate** | Grades each comment (valid, nitpick, wrong, etc.) | `evaluation_{timestamp}.md` |
 | 📐 | **Formulate** | Plans code changes for accepted comments | `plan_{timestamp}.md` |
 | 💬 | **Respond** | Posts replies to each PR comment thread | GitHub PR comments |
@@ -55,19 +55,38 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
    | `personal-dir-location` | Path for notes/artifacts (must be outside the repo) |
    | `git-user-email` | Must match `git config user.email` in your repo |
    | `git-user-name` | Must match `git config user.name` in your repo |
-   | `developer-handle` | Short handle that appears in your branch names |
+   | `developer-handle` | Short handle that appears in your branch names (optional) |
+   | `product-text` | Description of your product and tech stack |
+   | `sanity-text` | Self-audit questions run after implementation |
+   | `guidance-text` | Architectural rules and coding conventions |
+
+   See `config.example.json` for the full template with all keys.
 
 ## Usage
 
 ```
-/rockem-sockem
+/rockem-sockem [item-id] [quiet] [private] [unanswered]
 ```
 
-The skill will prompt you for an item ID (e.g., a work item or ticket number found in your branch name), then run the full pipeline.
+All parameters are optional:
+
+| Param | Effect |
+|-------|--------|
+| `item-id` | Skip the item ID prompt (e.g., `19739`) |
+| `quiet` | Allow all edits without per-action confirmations |
+| `private` | Skip posting comments to GitHub |
+| `unanswered` | Also process resolved comments that received no reply |
+
+**Examples:**
+- `/rockem-sockem` — interactive, prompts for everything
+- `/rockem-sockem 19739` — use item ID 19739
+- `/rockem-sockem 19739 quiet` — fast mode, no confirmations
+- `/rockem-sockem quiet private` — no confirmations, no GitHub comments
+- `/rockem-sockem 19739 unanswered` — include unanswered resolved comments
 
 When it finishes:
-- PR comment replies have been posted -- you still need to **mark conversations as resolved** in GitHub
-- Commits have been created locally -- you still need to **push**
+- Unless `private` was used, PR comment replies have been posted — **mark conversations as resolved** in GitHub
+- Commits have been created locally — you still need to **push**
 
 ## How it works
 
