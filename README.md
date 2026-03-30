@@ -71,15 +71,15 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
 ## Usage
 
 ```
-/rockem-sockem [--item-id:value] [--quiet[:bool]] [--private[:bool]] [--unanswered[:bool]]
+/rockem-sockem [--item-id:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]]
 ```
 
-Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `--name:true`, or `--name:false`. Omitted parameters fall back to config defaults.
+Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `--name:true`, or `--name:false`. The `--quiet` parameter also accepts `--quiet:force` for maximum automation. Omitted parameters fall back to config defaults.
 
 | Param | Type | Config Default | Effect |
 |-------|------|----------------|--------|
 | `--item-id` | string | *(none -- prompted)* | Work item identifier (e.g., `20525`) |
-| `--quiet` | bool | `false` | Allow all edits without confirmations |
+| `--quiet` | `false` \| `true` \| `force` | `false` | `false`: pause for confirmations. `true`: skip skill confirmations. `force`: skip all interruptions including tool approvals. |
 | `--private` | bool | `false` | Skip posting comments to GitHub |
 | `--unanswered` | bool | `false` | Also process resolved unanswered comments |
 
