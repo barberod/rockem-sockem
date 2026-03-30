@@ -45,7 +45,12 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
      "personal-dir-location": "C:\\path\\to\\your\\personal-notes",
      "git-user-email": "you@example.com",
      "git-user-name": "Your Name",
-     "developer-handle": "yourhandle"
+     "developer-handle": "yourhandle",
+     "defaults": {
+       "quiet": false,
+       "private": false,
+       "unanswered": false
+     }
    }
    ```
 
@@ -59,33 +64,34 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
    | `product-text` | Description of your product and tech stack |
    | `sanity-text` | Self-audit questions run after implementation |
    | `guidance-text` | Architectural rules and coding conventions |
+   | `defaults` | Default values for parameters (see Usage below) |
 
    See `config.example.json` for the full template with all keys.
 
 ## Usage
 
 ```
-/rockem-sockem [item-id] [quiet] [private] [unanswered]
+/rockem-sockem [--item-id:value] [--quiet[:bool]] [--private[:bool]] [--unanswered[:bool]]
 ```
 
-All parameters are optional:
+Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `--name:true`, or `--name:false`. Omitted parameters fall back to config defaults.
 
-| Param | Effect |
-|-------|--------|
-| `item-id` | Skip the item ID prompt (e.g., `19739`) |
-| `quiet` | Allow all edits without per-action confirmations |
-| `private` | Skip posting comments to GitHub |
-| `unanswered` | Also process resolved comments that received no reply |
+| Param | Type | Config Default | Effect |
+|-------|------|----------------|--------|
+| `--item-id` | string | *(none -- prompted)* | Work item identifier (e.g., `20525`) |
+| `--quiet` | bool | `false` | Allow all edits without confirmations |
+| `--private` | bool | `false` | Skip posting comments to GitHub |
+| `--unanswered` | bool | `false` | Also process resolved unanswered comments |
 
 **Examples:**
-- `/rockem-sockem` — interactive, prompts for everything
-- `/rockem-sockem 19739` — use item ID 19739
-- `/rockem-sockem 19739 quiet` — fast mode, no confirmations
-- `/rockem-sockem quiet private` — no confirmations, no GitHub comments
-- `/rockem-sockem 19739 unanswered` — include unanswered resolved comments
+- `/rockem-sockem` — prompts for item-id, uses config defaults for the rest
+- `/rockem-sockem --item-id:19739` — use item ID 19739, config defaults for the rest
+- `/rockem-sockem --item-id:19739 --quiet` — fast mode, no confirmations
+- `/rockem-sockem --item-id:19739 --private:true --unanswered:true` — no GitHub comments, include unanswered
+- `/rockem-sockem --item-id:19739 --quiet:false` — override a config default of quiet=true
 
 When it finishes:
-- Unless `private` was used, PR comment replies have been posted — **mark conversations as resolved** in GitHub
+- Unless `--private` resolved to `true`, PR comment replies have been posted — **mark conversations as resolved** in GitHub
 - Commits have been created locally — you still need to **push**
 
 ## How it works

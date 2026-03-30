@@ -5,15 +5,23 @@ description: Automate the processing of comments on GitHub pull requests written
 
 # Rockem Sockem
 
-**When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch. By default processes unresolved comments; with `unanswered`, also includes resolved but unanswered comments.
+**When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch. By default processes unresolved comments; with `--unanswered`, also includes resolved but unanswered comments.
 
-**Usage:** `/rockem-sockem [item-id] [quiet] [private] [unanswered]`
+**Usage:** `/rockem-sockem [--item-id:value] [--quiet[:bool]] [--private[:bool]] [--unanswered[:bool]]`
 
-- If `item-id` is passed, Step 3 skips the prompt and uses it directly (still validated).
-- If `quiet` is passed, the skill runs in quiet mode (see Step 4e below).
-- If `private` is passed, the Respond phase (Step 9) is skipped entirely — no comments are posted to GitHub.
-- If `unanswered` is passed, the Fetch phase also gathers resolved conversations that received no reply — not just unresolved ones.
-- All can be combined: `/rockem-sockem 19739 quiet private unanswered`
+- Parameters use `--name:value` syntax and may appear in **any order**.
+- Boolean parameters accept `--name:true`, `--name:false`, or bare `--name` (shorthand for `--name:true`).
+- Any parameter not provided on the command line falls back to the value in `config.json` under the `"defaults"` key. If no default exists, the user is prompted.
+- `--item-id` has no config default and will always be prompted if not passed.
+- Unrecognized parameter names are rejected with an error listing valid names.
+- Bare positional arguments (no `--` prefix) are rejected with a message showing the correct named syntax.
+- Pass `--help` to display a quick reference and exit.
+
+**Examples:**
+- `/rockem-sockem --item-id:20525 --quiet --private:true --unanswered:true`
+- `/rockem-sockem --item-id:20525` — other params use config defaults
+- `/rockem-sockem --item-id:20525 --quiet` — shorthand: quiet mode on
+- `/rockem-sockem` — prompts for item-id, other params use config defaults
 
 ## Overview
 
@@ -39,8 +47,30 @@ Read `config.json` from this skill's directory. This file defines:
 | `product-text` | Description of your product (tech stack, architecture, frameworks) — injected into all phase files |
 | `sanity-text` | Lettered self-audit questions run after implementation — injected into the SANITY CHECK phase |
 | `guidance-text` | Architectural rules, coding conventions, and workflow constraints — injected into FORMULATE and IMPLEMENT phases |
+| `defaults` | Object with default parameter values: `quiet`, `private`, `unanswered`. Missing boolean keys are treated as `false`. |
 
 If `config.json` is missing or unreadable, stop and alert the user.
+
+**Parse and resolve named parameters.** After loading config, parse the invocation arguments using these rules:
+
+1. Split the argument string on spaces.
+2. **Help check.** If any token is `--help`, read `HELP.md` from this skill directory and display its contents to the user. Then **stop** — do not continue with the rest of the skill.
+3. Each token must start with `--`. If any token lacks the `--` prefix, stop and alert the user that this skill uses named parameters, and show the correct syntax.
+4. For each `--` token, split on the **first** colon (`:`) to get the parameter name and value. If there is no colon, the token is a bare boolean flag (value = `true`).
+5. Validate each parameter name against the allowed set: `item-id`, `quiet`, `private`, `unanswered`. If unrecognized, stop and alert the user with the list of valid names.
+6. Reject duplicate parameter names.
+7. For boolean parameters, the value must be `true`, `false`, or absent (bare flag = `true`).
+
+**Resolve each parameter** using this precedence: command-line value > `defaults` from config > prompt user. Store the resolved values for use in subsequent steps.
+
+| Scenario | Resolved value |
+|---|---|
+| `--quiet` (bare) | `true` |
+| `--quiet:true` | `true` |
+| `--quiet:false` | `false` |
+| not passed, config default is `true` | `true` |
+| not passed, config default is `false` | `false` |
+| not passed, no config default | prompt user |
 
 ### Step 2 — Check Requirements
 
@@ -56,7 +86,8 @@ Validate all of the following. If any check fails, notify the user with a clear 
 
 **(e)** `developer-handle` is present. It may be empty — this is allowed, but branch matching in Step 4 will fall back to `item-id` only.
 
-**(f)** All 8 frontmatter files exist in this skill directory and are non-empty:
+**(f)** All of the following files exist in this skill directory and are non-empty:
+- `HELP.md`
 - `FETCH.md`
 - `EVALUATE.md`
 - `FORMULATE.md`
@@ -66,9 +97,9 @@ Validate all of the following. If any check fails, notify the user with a clear 
 - `GLEAN.md`
 - `FINALIZE.md`
 
-### Step 3 — Prompt for Item ID
+### Step 3 — Resolve Item ID
 
-If `item-id` was passed as a parameter, use it. Otherwise, ask the user for an `item-id`. Either way, validate:
+If `--item-id` was provided (from the command line), use it. Otherwise, ask the user for an `item-id`. Either way, validate:
 
 - Only letters, numbers, hyphens, and underscores allowed
 - No spaces
@@ -92,7 +123,7 @@ gh pr list --state open --head "{designated-branch-name}" --json number,title,ur
 ```
 If no open PR exists, stop and alert the user.
 
-**(e) Establish quiet mode.** If `quiet` was passed as a parameter, quiet mode is on. Otherwise, ask the user: "Allow all edits for this run?" If they confirm, quiet mode is on. If they decline (or do not respond affirmatively), quiet mode is off.
+**(e) Establish quiet mode.** If `quiet` resolved to `true` (from command line or config default), quiet mode is on. If it resolved to `false`, quiet mode is off. If it was not resolved at all (neither command line nor config default), ask the user: "Allow all edits for this run?" If they confirm, quiet mode is on. If they decline (or do not respond affirmatively), quiet mode is off.
 
 When quiet mode is **on**, the skill proceeds through all phases without pausing for confirmations — it will not ask the user to approve individual edits, file writes, or git operations. When quiet mode is **off**, the skill may pause to confirm significant actions with the user as it normally would.
 
@@ -133,7 +164,7 @@ Execute each phase **in order**. For each phase:
 | 6 | ⬇️ | Fetch | `FETCH.md` | `comments_{timestamp}.md` |
 | 7 | 📊 | Evaluate | `EVALUATE.md` | `evaluation_{timestamp}.md` |
 | 8 | 📐 | Formulate | `FORMULATE.md` | `plan_{timestamp}.md` |
-| 9 | 💬 | Respond | `RESPOND.md` | Comments posted to GitHub PR *(skipped if `private`)* |
+| 9 | 💬 | Respond | `RESPOND.md` | Comments posted to GitHub PR *(skipped if `--private` resolved to `true`)* |
 | 10 | 🏗️ | Implement | `IMPLEMENT.md` | Code changes in the repo |
 | 11 | 🤔 | Sanity Check | `SANITYCHECK.md` | `sanity-check_{timestamp}.md` |
 | 12 | 📓 | Glean | `GLEAN.md` | `lessons_{timestamp}.md` |
@@ -145,8 +176,8 @@ All markdown output files are saved to: `{personal-dir-location}/notes/{year}/{m
 
 The process is finished. Inform the user:
 
-1. If `private` was **not** used: Responses have been posted to unresolved PR comment threads, but the user must still **manually mark each conversation as resolved** in GitHub.
-   If `private` **was** used: No comments were posted. The drafted responses are in the evaluation file for manual review.
+1. If `--private` resolved to `false`: Responses have been posted to unresolved PR comment threads, but the user must still **manually mark each conversation as resolved** in GitHub.
+   If `--private` resolved to `true`: No comments were posted. The drafted responses are in the evaluation file for manual review.
 2. New commits have been created on the designated branch, but the user must still **push** them.
 
 All time-bound and run-scoped variables are now unset. A fresh `/rockem-sockem` invocation will set its own values.

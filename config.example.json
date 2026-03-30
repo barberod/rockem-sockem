@@ -6,5 +6,10 @@
   "developer-handle": "yourhandle (optional — leave empty if your branches don't include a handle)",
   "product-text": "The product is a [describe your product here — tech stack, architecture, key frameworks, database]. This context helps the assistant understand what it is working on and make appropriate decisions.",
   "sanity-text": "(a) [First sanity check question — e.g., Have you removed any functionality that you were not explicitly told to remove?]\n\n(b) [Second question — e.g., Have you taken a shortcut?]\n\n[Add as many lettered questions as you need. These are the self-audit checks run after implementation.]",
-  "guidance-text": "### Guidance: [Your first guideline title]\n\n[Describe an architectural rule, coding convention, or workflow constraint that the assistant must follow when formulating plans and implementing changes. Repeat this pattern for each guideline you want to enforce.]\n\n### Guidance: [Your second guideline title]\n\n[Another guideline. You can have as many as you need.]"
+  "guidance-text": "### Guidance: [Your first guideline title]\n\n[Describe an architectural rule, coding convention, or workflow constraint that the assistant must follow when formulating plans and implementing changes. Repeat this pattern for each guideline you want to enforce.]\n\n### Guidance: [Your second guideline title]\n\n[Another guideline. You can have as many as you need.]",
+  "defaults": {
+    "quiet": false,
+    "private": false,
+    "unanswered": false
+  }
 }
