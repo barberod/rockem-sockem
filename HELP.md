@@ -3,18 +3,18 @@
 Fetch, evaluate, and resolve PR review comments in one run.
 
 ```
-/rockem-sockem [--item-id:value] [--quiet[:bool]] [--private[:bool]] [--unanswered[:bool]]
+/rockem-sockem [--item-id:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]]
 ```
 
 | Param | Type | Default | What it does |
 |-------|------|---------|--------------|
 | `--item-id` | string | *(prompted)* | Work item ID (e.g., `20525`) |
-| `--quiet` | bool | `false` | Skip per-action confirmations |
+| `--quiet` | `false` \| `true` \| `force` | `false` | `false`: normal. `true`: skip skill confirmations. `force`: skip all interruptions. |
 | `--private` | bool | `false` | Skip posting replies to GitHub |
 | `--unanswered` | bool | `false` | Include resolved-but-unanswered comments |
 
 
-Booleans: `--quiet` = true, `--quiet:true` = true, `--quiet:false` = false.
+Booleans: `--quiet` = true, `--quiet:true` = true, `--quiet:false` = false, `--quiet:force` = force (max automation).
 Omitted params use defaults from `config.json` > `"defaults"`.
 
 **Examples:**
