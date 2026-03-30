@@ -45,7 +45,7 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
      "personal-dir-location": "C:\\path\\to\\your\\personal-notes",
      "git-user-email": "you@example.com",
      "git-user-name": "Your Name",
-     "developer-handle": "yourhandle",
+     "handle": "yourhandle",
      "defaults": {
        "quiet": false,
        "private": false,
@@ -58,9 +58,9 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
    |-----|-------------|
    | `project-repo-location` | Local path to the repo you work in |
    | `personal-dir-location` | Path for notes/artifacts (must be outside the repo) |
-   | `git-user-email` | Must match `git config user.email` in your repo |
-   | `git-user-name` | Must match `git config user.name` in your repo |
-   | `developer-handle` | Short handle that appears in your branch names (optional) |
+   | `git-user-email` | Must match `git config user.email` in your repo (or `_` to skip check; overridable via `--git-user-email` param) |
+   | `git-user-name` | Must match `git config user.name` in your repo (or `_` to skip check; overridable via `--git-user-name` param) |
+   | `handle` | Short handle that appears in your branch names (optional; `_` to skip filtering; overridable via `--handle` param) |
    | `product-text` | Description of your product and tech stack |
    | `sanity-text` | Self-audit questions run after implementation |
    | `guidance-text` | Architectural rules and coding conventions |
@@ -71,7 +71,7 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
 ## Usage
 
 ```
-/rockem-sockem [--item-id:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]]
+/rockem-sockem [--item-id:value] [--handle:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]] [--git-user-email:value] [--git-user-name:value]
 ```
 
 Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `--name:true`, or `--name:false`. The `--quiet` parameter also accepts `--quiet:force` for maximum automation. Omitted parameters fall back to config defaults.
@@ -79,9 +79,14 @@ Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `-
 | Param | Type | Config Default | Effect |
 |-------|------|----------------|--------|
 | `--item-id` | string | *(none -- prompted)* | Work item identifier (e.g., `20525`) |
+| `--handle` | string | *(config `handle` key)* | Developer handle for branch matching; `_` skips filtering |
 | `--quiet` | `false` \| `true` \| `force` | `false` | `false`: pause for confirmations. `true`: skip skill confirmations. `force`: skip all interruptions including tool approvals. |
 | `--private` | bool | `false` | Skip posting comments to GitHub |
 | `--unanswered` | bool | `false` | Also process resolved unanswered comments |
+| `--git-user-email` | string | *(config `git-user-email` key)* | Override git email check; `_` skips |
+| `--git-user-name` | string | *(config `git-user-name` key)* | Override git name check; `_` skips |
+
+Identity parameters (`--handle`, `--git-user-email`, `--git-user-name`) fall back to the corresponding top-level config key rather than the `defaults` object. They are never prompted for.
 
 **Examples:**
 - `/rockem-sockem` — prompts for item-id, uses config defaults for the rest
@@ -89,6 +94,7 @@ Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `-
 - `/rockem-sockem --item-id:19739 --quiet` — fast mode, no confirmations
 - `/rockem-sockem --item-id:19739 --private:true --unanswered:true` — no GitHub comments, include unanswered
 - `/rockem-sockem --item-id:19739 --quiet:false` — override a config default of quiet=true
+- `/rockem-sockem --handle:_ --git-user-email:_` — skip handle filtering and email check
 
 When it finishes:
 - Unless `--private` resolved to `true`, PR comment replies have been posted — **mark conversations as resolved** in GitHub

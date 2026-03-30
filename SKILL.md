@@ -7,7 +7,7 @@ description: Automate the processing of comments on GitHub pull requests written
 
 **When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch. By default processes unresolved comments; with `--unanswered`, also includes resolved but unanswered comments.
 
-**Usage:** `/rockem-sockem [--item-id:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]]`
+**Usage:** `/rockem-sockem [--item-id:value] [--handle:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]] [--git-user-email:value] [--git-user-name:value]`
 
 - Parameters use `--name:value` syntax and may appear in **any order**.
 - Boolean parameters accept `--name:true`, `--name:false`, or bare `--name` (shorthand for `--name:true`).
@@ -44,7 +44,7 @@ Read `config.json` from this skill's directory. This file defines:
 | `personal-dir-location` | Local path to the developer's personal files (outside the repo) |
 | `git-user-email` | Developer's git email |
 | `git-user-name` | Developer's git name |
-| `developer-handle` | Short handle used in branch names |
+| `handle` | Short handle used in branch names (overridable via `--handle` param; set to `_` to skip handle filtering) |
 | `product-text` | Description of your product (tech stack, architecture, frameworks) — injected into all phase files |
 | `sanity-text` | Lettered self-audit questions run after implementation — injected into the SANITY CHECK phase |
 | `guidance-text` | Architectural rules, coding conventions, and workflow constraints — injected into FORMULATE and IMPLEMENT phases |
@@ -58,11 +58,13 @@ If `config.json` is missing or unreadable, stop and alert the user.
 2. **Help check.** If any token is `--help`, read `HELP.md` from this skill directory and display its contents to the user. Then **stop** — do not continue with the rest of the skill.
 3. Each token must start with `--`. If any token lacks the `--` prefix, stop and alert the user that this skill uses named parameters, and show the correct syntax.
 4. For each `--` token, split on the **first** colon (`:`) to get the parameter name and value. If there is no colon, the token is a bare boolean flag (value = `true`).
-5. Validate each parameter name against the allowed set: `item-id`, `quiet`, `private`, `unanswered`. If unrecognized, stop and alert the user with the list of valid names.
+5. Validate each parameter name against the allowed set: `item-id`, `handle`, `quiet`, `private`, `unanswered`, `git-user-email`, `git-user-name`. If unrecognized, stop and alert the user with the list of valid names.
 6. Reject duplicate parameter names.
-7. For boolean parameters (`private`, `unanswered`), the value must be `true`, `false`, or absent (bare flag = `true`). For `quiet`, the value must be `true`, `false`, `force`, or absent (bare `--quiet` = `true`).
+7. For boolean parameters (`private`, `unanswered`), the value must be `true`, `false`, or absent (bare flag = `true`). For `quiet`, the value must be `true`, `false`, `force`, or absent (bare `--quiet` = `true`). For string parameters (`handle`, `git-user-email`, `git-user-name`), any non-empty value is accepted.
 
 **Resolve each parameter** using this precedence: command-line value > `defaults` from config > prompt user. Store the resolved values for use in subsequent steps.
+
+**Special resolution for identity parameters:** `--handle`, `--git-user-email`, and `--git-user-name` resolve as: command-line value > corresponding top-level config key (`handle`, `git-user-email`, `git-user-name`). These are **not** in the `defaults` object and are **never** prompted for — if absent from both command line and config, `handle` defaults to empty; `git-user-email` and `git-user-name` remain unset (the Step 2 check will fail unless bypassed with `_`).
 
 | Scenario | Resolved value |
 |---|---|
@@ -83,11 +85,11 @@ Validate all of the following. If any check fails, notify the user with a clear 
 
 **(b)** `personal-dir-location` exists and is accessible.
 
-**(c)** The git user email configured in the repo at `project-repo-location` matches `git-user-email` from config.
+**(c)** If the resolved `git-user-email` is `_`, skip this check entirely. Otherwise, the git user email configured in the repo at `project-repo-location` must match the resolved `git-user-email` value.
 
-**(d)** The git user name configured in the repo at `project-repo-location` matches `git-user-name` from config.
+**(d)** If the resolved `git-user-name` is `_`, skip this check entirely. Otherwise, the git user name configured in the repo at `project-repo-location` must match the resolved `git-user-name` value.
 
-**(e)** `developer-handle` is present. It may be empty — this is allowed, but branch matching in Step 4 will fall back to `item-id` only.
+**(e)** `handle` is resolved (from `--handle` param or config `handle` key). It may be empty — this is allowed, but branch matching in Step 4 will fall back to `item-id` only. If its value is `_`, branch matching will also use `item-id` only (equivalent to empty for matching, but skips confirmation prompts).
 
 **(f)** All of the following files exist in this skill directory and are non-empty:
 - `HELP.md`
@@ -114,7 +116,7 @@ If validation fails, explain which rule failed and prompt again.
 
 ### Step 4 — Verify Branch and PR
 
-**(a) Find the designated branch.** If `developer-handle` is non-empty, search for branches whose name contains **both** `developer-handle` and `item-id`. If `developer-handle` is empty, search for branches containing `item-id` only. If exactly one match exists, that is the "designated branch." If multiple matches exist, list them and ask the user to select one. If none exist, stop and alert the user. If `developer-handle` was empty and a single match was found, confirm the branch with the user before proceeding.
+**(a) Find the designated branch.** If `handle` is non-empty and is not `_`, search for branches whose name contains **both** `handle` and `item-id`. If `handle` is empty or `_`, search for branches containing `item-id` only. If exactly one match exists, that is the "designated branch." If multiple matches exist, list them and ask the user to select one. If none exist, stop and alert the user. If `handle` was empty and a single match was found, confirm the branch with the user before proceeding. If `handle` was `_`, no confirmation is needed — the user explicitly opted out of handle filtering.
 
 **(b) Confirm the designated branch is checked out.** If it is not the currently checked-out branch, stop and alert the user.
 
