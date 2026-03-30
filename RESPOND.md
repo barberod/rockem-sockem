@@ -10,7 +10,7 @@ You are a coding assistant helping a software engineer build and maintain an ent
 
 #### Notes and Analysis
 
-Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{item-id}`. Also known as "the notes".
+Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{folder-name}`. Also known as "the notes".
 
 #### Codebase
 

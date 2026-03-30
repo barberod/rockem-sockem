@@ -10,11 +10,11 @@ You are a coding assistant helping a software engineer build and maintain an ent
 
 #### Comments
 
-The evaluation results have been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\evaluation_{timestamp}.md`.
+The evaluation results have been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\evaluation_{timestamp}.md`.
 
 #### Notes and Analysis
 
-Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{item-id}`. Also known as "the notes".
+Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{folder-name}`. Also known as "the notes".
 
 #### Codebase
 
@@ -30,7 +30,7 @@ Consider the evaluation results you are being shown. Formulate a plan make chang
 
 ## Output
 
-Produce a file. Name it `{personal-dir-location}\notes\{year}\{month}\{item-id}\plan_{timestamp}.md`.
+Produce a file. Name it `{personal-dir-location}\notes\{year}\{month}\{folder-name}\plan_{timestamp}.md`.
 
 ### Example
 

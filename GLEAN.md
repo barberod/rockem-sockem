@@ -10,23 +10,23 @@ You are a coding assistant helping a software engineer build and maintain an ent
 
 #### The Comments
 
-The comments have been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\comments_{timestamp}.md`.
+The comments have been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\comments_{timestamp}.md`.
 
 #### The Evaluation
 
-The evaluation results have been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\evaluation_{timestamp}.md`.
+The evaluation results have been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\evaluation_{timestamp}.md`.
 
 #### The Plan
 
-The plan has been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\plan_{timestamp}.md`.
+The plan has been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\plan_{timestamp}.md`.
 
 #### The Sanity Check
 
-The sanity check ahs been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\plan_{timestamp}.md`.
+The sanity check ahs been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\plan_{timestamp}.md`.
 
 #### Notes and Analysis
 
-Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{item-id}`. Also known as "the notes".
+Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{folder-name}`. Also known as "the notes".
 
 #### Codebase
 
@@ -62,7 +62,7 @@ Consider the initial PR comments, but then consider how they were ultimately add
 
 ## Output
 
-Produce a file. Name it `{personal-dir-location}\notes\{year}\{month}\{item-id}\lessons_{timestamp}.md`.
+Produce a file. Name it `{personal-dir-location}\notes\{year}\{month}\{folder-name}\lessons_{timestamp}.md`.
 
 This will contain the 1 to 6 nuggets of feedback.
 

@@ -10,19 +10,19 @@ You are a coding assistant helping a software engineer build and maintain an ent
 
 #### The Comments
 
-The comments been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\comments_{timestamp}.md`.
+The comments been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\comments_{timestamp}.md`.
 
 #### The Evaluation
 
-The evaluation results been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\evaluation_{timestamp}.md`.
+The evaluation results been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\evaluation_{timestamp}.md`.
 
 #### The Plan
 
-The plan been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{item-id}\plan_{timestamp}.md`.
+The plan been saved into a markdown file located at `{personal-dir-location}\notes\{year}\{month}\{folder-name}\plan_{timestamp}.md`.
 
 #### Notes and Analysis
 
-Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{item-id}`. Also known as "the notes".
+Work in the following directory: `{personal-dir-location}\notes\{year}\{month}\{folder-name}`. Also known as "the notes".
 
 #### Codebase
 
@@ -60,7 +60,7 @@ Then, be sure you can confidently answer "No" to each of the following questions
 
 If you cannot confidently answer "No" to each of the following questions, return to the "Implement" step and continue to work on the codebase. Communicate with the user.
 
-If you do adjust the plan, document the changes by appending new content to `{personal-dir-location}\notes\{year}\{month}\{item-id}\plan_{timestamp}.md` leaving the original content in place for the sake of documentation.
+If you do adjust the plan, document the changes by appending new content to `{personal-dir-location}\notes\{year}\{month}\{folder-name}\plan_{timestamp}.md` leaving the original content in place for the sake of documentation.
 
 #### "Go"
 
@@ -68,7 +68,7 @@ Proceed to generating the desired output.
 
 ## Output
 
-Produce a file. Name it `{personal-dir-location}\notes\{year}\{month}\{item-id}\sanity-check_{timestamp}.md`.
+Produce a file. Name it `{personal-dir-location}\notes\{year}\{month}\{folder-name}\sanity-check_{timestamp}.md`.
 
 This will be a short relection on the questions posed under the "Now what?" header. Fully prosaic. No bullets. No emoji. No bold or italic formmating. No subsections or subheaders. No links. Length: anywhere from 10 words to 250 words.
 
