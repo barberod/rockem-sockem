@@ -7,10 +7,11 @@ description: Automate the processing of comments on GitHub pull requests written
 
 **When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch. By default processes unresolved comments; with `--unanswered`, also includes resolved but unanswered comments.
 
-**Usage:** `/rockem-sockem [--item-id:value] [--quiet[:bool]] [--private[:bool]] [--unanswered[:bool]]`
+**Usage:** `/rockem-sockem [--item-id:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]]`
 
 - Parameters use `--name:value` syntax and may appear in **any order**.
 - Boolean parameters accept `--name:true`, `--name:false`, or bare `--name` (shorthand for `--name:true`).
+- The `--quiet` parameter additionally accepts `--quiet:force` for maximum automation (see Step 4e).
 - Any parameter not provided on the command line falls back to the value in `config.json` under the `"defaults"` key. If no default exists, the user is prompted.
 - `--item-id` has no config default and will always be prompted if not passed.
 - Unrecognized parameter names are rejected with an error listing valid names.
@@ -59,7 +60,7 @@ If `config.json` is missing or unreadable, stop and alert the user.
 4. For each `--` token, split on the **first** colon (`:`) to get the parameter name and value. If there is no colon, the token is a bare boolean flag (value = `true`).
 5. Validate each parameter name against the allowed set: `item-id`, `quiet`, `private`, `unanswered`. If unrecognized, stop and alert the user with the list of valid names.
 6. Reject duplicate parameter names.
-7. For boolean parameters, the value must be `true`, `false`, or absent (bare flag = `true`).
+7. For boolean parameters (`private`, `unanswered`), the value must be `true`, `false`, or absent (bare flag = `true`). For `quiet`, the value must be `true`, `false`, `force`, or absent (bare `--quiet` = `true`).
 
 **Resolve each parameter** using this precedence: command-line value > `defaults` from config > prompt user. Store the resolved values for use in subsequent steps.
 
@@ -68,8 +69,10 @@ If `config.json` is missing or unreadable, stop and alert the user.
 | `--quiet` (bare) | `true` |
 | `--quiet:true` | `true` |
 | `--quiet:false` | `false` |
+| `--quiet:force` | `force` |
 | not passed, config default is `true` | `true` |
 | not passed, config default is `false` | `false` |
+| not passed, config default is `"force"` | `force` |
 | not passed, no config default | prompt user |
 
 ### Step 2 — Check Requirements
@@ -123,9 +126,15 @@ gh pr list --state open --head "{designated-branch-name}" --json number,title,ur
 ```
 If no open PR exists, stop and alert the user.
 
-**(e) Establish quiet mode.** If `quiet` resolved to `true` (from command line or config default), quiet mode is on. If it resolved to `false`, quiet mode is off. If it was not resolved at all (neither command line nor config default), ask the user: "Allow all edits for this run?" If they confirm, quiet mode is on. If they decline (or do not respond affirmatively), quiet mode is off.
+**(e) Establish quiet mode.** The `quiet` parameter resolves to one of three levels: `false`, `true`, or `force`. If it was not resolved at all (neither command line nor config default), ask the user: "Allow all edits for this run? (no / yes / force)" If they confirm with "yes", quiet is `true`. If they respond with "force", quiet is `force`. If they decline (or do not respond affirmatively), quiet is `false`.
 
-When quiet mode is **on**, the skill proceeds through all phases without pausing for confirmations — it will not ask the user to approve individual edits, file writes, or git operations. When quiet mode is **off**, the skill may pause to confirm significant actions with the user as it normally would.
+The three levels are:
+
+| Level | Behavior |
+|-------|----------|
+| `false` | **Normal.** The skill may pause to confirm significant actions with the user as it normally would. |
+| `true` | **Quiet.** The skill proceeds without pausing for skill-level confirmations — it will not ask the user to approve individual edits, file writes, or git operations. The runtime environment (e.g., Claude Code's tool-permission prompts) may still interrupt. |
+| `force` | **Force.** The skill proceeds without pausing for **any** reason. Do **NOT** prompt the user for permission to run any command. Execute all bash commands, git commands, file writes, file reads, and any other tool operations without pausing, without asking, and without waiting for approval. The **only** permitted interruption is a genuine, unrecoverable error that prevents correct execution. The user has explicitly pre-authorized every tool call and shell command for the duration of this run by selecting force mode. |
 
 ### Step 5 — Set Time-Bound Variables and Ensure Directories
 
@@ -142,9 +151,15 @@ When quiet mode is **on**, the skill proceeds through all phases without pausing
 
 **(g) Safety check:** Verify that `personal-dir-location` is NOT inside `project-repo-location`. If it is, stop and alert the user.
 
-**(h-k) Ensure personal subdirectories exist.** Create the full path if any segment is missing:
+**(h-k) Ensure personal subdirectories exist.**
+
+First, derive the **folder name** from `{item-id}`. If `{item-id}` starts with `pbi` or `bug` (case-insensitive) AND the remainder after stripping that prefix consists entirely of digits (with the total original string being at least 5 characters), use only the numeric part as the folder name. Otherwise, use `{item-id}` unchanged. Always derive from the **original user-provided** item-id (from the command line or prompt), never from a branch-name segment discovered during Step 4(a). Store the result as `{folder-name}` and use it in the directory path below and in all subsequent output-path references where the subdirectory is needed.
+
+Examples: `pbi20525` → `20525`; `bug12345` → `12345`; `BUG90210` → `90210`; `trapper-keeper` → `trapper-keeper`; `pbitools` → `pbitools` (remainder is not all digits); `bugbear` → `bugbear`; `wsl2` → `wsl2`; `20314` → `20314`.
+
+Create the full path if any segment is missing:
 ```
-{personal-dir-location}/notes/{year}/{month}/{item-id}/
+{personal-dir-location}/notes/{year}/{month}/{folder-name}/
 ```
 
 ### Steps 6–13 — Execute Frontmatter Phases
@@ -170,7 +185,7 @@ Execute each phase **in order**. For each phase:
 | 12 | 📓 | Glean | `GLEAN.md` | `lessons_{timestamp}.md` |
 | 13 | 📦 | Finalize | `FINALIZE.md` | Git commits (not pushed) |
 
-All markdown output files are saved to: `{personal-dir-location}/notes/{year}/{month}/{item-id}/`
+All markdown output files are saved to: `{personal-dir-location}/notes/{year}/{month}/{folder-name}/`
 
 ### Step 14 — Process Complete
 
@@ -191,3 +206,4 @@ All time-bound and run-scoped variables are now unset. A fresh `/rockem-sockem` 
 - **Fail-safe.** On any step failure, the skill stops and alerts the user rather than continuing with partial or incorrect work.
 - **No attribution.** Per FINALIZE.md, git commits must not include "Co-Authored-By" or any agent attribution lines.
 - **No push.** The skill creates commits but never pushes them. The user pushes manually.
+- **Force mode means zero interruptions.** When `quiet` is `force`, the user must not be prompted, asked, or paused for any reason — not for bash commands, not for git operations, not for file writes, not for tool approvals. Execute everything autonomously. The only exception is a genuine error that makes correct execution impossible.
