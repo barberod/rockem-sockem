@@ -1,0 +1,21 @@
+# Guidance
+
+Write your architectural rules, coding conventions, and workflow constraints here. Each guideline should be a titled section that the assistant must follow when formulating plans and implementing changes.
+
+This file is gitignored because it contains user-specific project guidance. To get started:
+
+```bash
+cp GUIDANCE.md.example GUIDANCE.md
+```
+
+Then replace the example guidelines below with your own.
+
+---
+
+### Guidance: Preserve existing functionality.
+
+Do not remove or alter existing behavior unless explicitly told to do so. New changes should be additive where possible.
+
+### Guidance: Follow established architecture.
+
+Honor the patterns and conventions already established in the codebase. Do not introduce novel approaches when existing patterns serve the purpose.
