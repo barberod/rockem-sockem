@@ -1,0 +1,23 @@
+# Sanity Check Rules
+
+Write your self-audit questions here. Each rule should be a lettered question that the assistant must confidently answer "No" to after implementing changes. These are run during the SANITY CHECK phase.
+
+This file is gitignored because it contains user-specific audit criteria. To get started:
+
+```bash
+cp SANITYCHECK-RULES.md.example SANITYCHECK-RULES.md
+```
+
+Then replace the example rules below with your own.
+
+---
+
+(a) Have you removed any functionality that you were not explicitly told to remove?
+
+(b) Have you taken a shortcut that bypasses the project's established architecture?
+
+(c) Have you introduced any hardcoded values that should be configurable or localized?
+
+(d) Are any data types incorrect or imprecise for their intended use?
+
+(e) Have you created new code that duplicates existing functionality available elsewhere in the codebase?
