@@ -7,7 +7,7 @@ description: Automate the processing of comments on GitHub pull requests written
 
 **When to use:** Invoke with `/rockem-sockem` to fetch, evaluate, grade, respond to, and implement fixes for PR review comments (from GitHub Copilot, Claude, or human reviewers) on a designated development branch. By default processes unresolved comments; with `--unanswered`, also includes resolved but unanswered comments.
 
-**Usage:** `/rockem-sockem [--item-id:value] [--handle:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]] [--git-user-email:value] [--git-user-name:value]`
+**Usage:** `/rockem-sockem [--item-id:value] [--handle:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]] [--user-mail:value] [--user-name:value]`
 
 - Parameters use `--name:value` syntax and may appear in **any order**.
 - Boolean parameters accept `--name:true`, `--name:false`, or bare `--name` (shorthand for `--name:true`).
@@ -42,15 +42,17 @@ Read `config.json` from this skill's directory. This file defines:
 |-----|-------------|
 | `project-repo-location` | Local path to the main codebase repo |
 | `personal-dir-location` | Local path to the developer's personal files (outside the repo) |
-| `git-user-email` | Developer's git email |
-| `git-user-name` | Developer's git name |
+| `user-mail` | Developer's git email |
+| `user-name` | Developer's git name |
 | `handle` | Short handle used in branch names (overridable via `--handle` param; set to `_` to skip handle filtering) |
 | `product-text` | Description of your product (tech stack, architecture, frameworks) — injected into all phase files |
-| `sanity-text` | Lettered self-audit questions run after implementation — injected into the SANITY CHECK phase |
-| `guidance-text` | Architectural rules, coding conventions, and workflow constraints — injected into FORMULATE and IMPLEMENT phases |
 | `defaults` | Object with default parameter values: `quiet`, `private`, `unanswered`. Missing boolean keys are treated as `false`. |
 
 If `config.json` is missing or unreadable, stop and alert the user.
+
+**Sanity check rules source:** Read `SANITYCHECK-RULES.md` from this skill directory. If it does not exist or is empty, fall back to `SANITYCHECK-RULES.md.example`. If neither file exists or both are empty, stop and alert the user — sanity check rules are required. Set `{sanity-text}` to the full text content of whichever file was found. This value is injected into SANITYCHECK.md.
+
+**Guidance source:** Read `GUIDANCE.md` from this skill directory. If it does not exist or is empty, fall back to `GUIDANCE.md.example`. If neither file exists or both are empty, stop and alert the user — guidance is required. Set `{guidance-text}` to the full text content of whichever file was found. This value is injected into FORMULATE.md and IMPLEMENT.md.
 
 **Parse and resolve named parameters.** After loading config, parse the invocation arguments using these rules:
 
@@ -58,13 +60,13 @@ If `config.json` is missing or unreadable, stop and alert the user.
 2. **Help check.** If any token is `--help`, read `HELP.md` from this skill directory and display its contents to the user. Then **stop** — do not continue with the rest of the skill.
 3. Each token must start with `--`. If any token lacks the `--` prefix, stop and alert the user that this skill uses named parameters, and show the correct syntax.
 4. For each `--` token, split on the **first** colon (`:`) to get the parameter name and value. If there is no colon, the token is a bare boolean flag (value = `true`).
-5. Validate each parameter name against the allowed set: `item-id`, `handle`, `quiet`, `private`, `unanswered`, `git-user-email`, `git-user-name`. If unrecognized, stop and alert the user with the list of valid names.
+5. Validate each parameter name against the allowed set: `item-id`, `handle`, `quiet`, `private`, `unanswered`, `user-mail`, `user-name`. If unrecognized, stop and alert the user with the list of valid names.
 6. Reject duplicate parameter names.
-7. For boolean parameters (`private`, `unanswered`), the value must be `true`, `false`, or absent (bare flag = `true`). For `quiet`, the value must be `true`, `false`, `force`, or absent (bare `--quiet` = `true`). For string parameters (`handle`, `git-user-email`, `git-user-name`), any non-empty value is accepted.
+7. For boolean parameters (`private`, `unanswered`), the value must be `true`, `false`, or absent (bare flag = `true`). For `quiet`, the value must be `true`, `false`, `force`, or absent (bare `--quiet` = `true`). For string parameters (`handle`, `user-mail`, `user-name`), any non-empty value is accepted.
 
 **Resolve each parameter** using this precedence: command-line value > `defaults` from config > prompt user. Store the resolved values for use in subsequent steps.
 
-**Special resolution for identity parameters:** `--handle`, `--git-user-email`, and `--git-user-name` resolve as: command-line value > corresponding top-level config key (`handle`, `git-user-email`, `git-user-name`). These are **not** in the `defaults` object and are **never** prompted for — if absent from both command line and config, `handle` defaults to empty; `git-user-email` and `git-user-name` remain unset (the Step 2 check will fail unless bypassed with `_`).
+**Special resolution for identity parameters:** `--handle`, `--user-mail`, and `--user-name` resolve as: command-line value > corresponding top-level config key (`handle`, `user-mail`, `user-name`). These are **not** in the `defaults` object and are **never** prompted for — if absent from both command line and config, `handle` defaults to empty; `user-mail` and `user-name` remain unset (the Step 2 check will fail unless bypassed with `_`).
 
 | Scenario | Resolved value |
 |---|---|
@@ -85,9 +87,9 @@ Validate all of the following. If any check fails, notify the user with a clear 
 
 **(b)** `personal-dir-location` exists and is accessible.
 
-**(c)** If the resolved `git-user-email` is `_`, skip this check entirely. Otherwise, the git user email configured in the repo at `project-repo-location` must match the resolved `git-user-email` value.
+**(c)** If the resolved `user-mail` is `_`, skip this check entirely. Otherwise, the git user email configured in the repo at `project-repo-location` must match the resolved `user-mail` value.
 
-**(d)** If the resolved `git-user-name` is `_`, skip this check entirely. Otherwise, the git user name configured in the repo at `project-repo-location` must match the resolved `git-user-name` value.
+**(d)** If the resolved `user-name` is `_`, skip this check entirely. Otherwise, the git user name configured in the repo at `project-repo-location` must match the resolved `user-name` value.
 
 **(e)** `handle` is resolved (from `--handle` param or config `handle` key). It may be empty — this is allowed, but branch matching in Step 4 will fall back to `item-id` only. If its value is `_`, branch matching will also use `item-id` only (equivalent to empty for matching, but skips confirmation prompts).
 
@@ -101,6 +103,8 @@ Validate all of the following. If any check fails, notify the user with a clear 
 - `SANITYCHECK.md`
 - `GLEAN.md`
 - `FINALIZE.md`
+- At least one of `SANITYCHECK-RULES.md` or `SANITYCHECK-RULES.md.example`
+- At least one of `GUIDANCE.md` or `GUIDANCE.md.example`
 
 ### Step 3 — Resolve Item ID
 
@@ -208,4 +212,6 @@ All time-bound and run-scoped variables are now unset. A fresh `/rockem-sockem` 
 - **Fail-safe.** On any step failure, the skill stops and alerts the user rather than continuing with partial or incorrect work.
 - **No attribution.** Per FINALIZE.md, git commits must not include "Co-Authored-By" or any agent attribution lines.
 - **No push.** The skill creates commits but never pushes them. The user pushes manually.
+- **Sanity check rules file.** Sanity check rules are stored in `SANITYCHECK-RULES.md` (gitignored, user-specific). This file is required — the skill stops if it is missing. Copy `SANITYCHECK-RULES.md.example` to `SANITYCHECK-RULES.md` and customize the rules.
+- **Guidance file.** Architectural guidance is stored in `GUIDANCE.md` (gitignored, user-specific). This file is required — the skill stops if it is missing. Copy `GUIDANCE.md.example` to `GUIDANCE.md` and customize.
 - **Force mode means zero interruptions.** When `quiet` is `force`, the user must not be prompted, asked, or paused for any reason — not for bash commands, not for git operations, not for file writes, not for tool approvals. Execute everything autonomously. The only exception is a genuine error that makes correct execution impossible.
