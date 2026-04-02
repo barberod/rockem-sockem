@@ -84,6 +84,8 @@ Markdown artifacts are saved to a personal notes directory outside the repo.
 /rockem-sockem [--item-id:value] [--handle:value] [--quiet[:false|true|force]] [--private[:bool]] [--unanswered[:bool]] [--user-mail:value] [--user-name:value]
 ```
 
+> **Tip:** Pass `--help` for a quick-reference card with all parameters, defaults, and examples.
+
 Parameters use `--name:value` syntax, in any order. Booleans accept `--name`, `--name:true`, or `--name:false`. The `--quiet` parameter also accepts `--quiet:force` for maximum automation. Omitted parameters fall back to config defaults.
 
 | Param | Type | Config Default | Effect |
