@@ -32,141 +32,59 @@ The 8 phases: ⬇️ **Fetch** → 📊 **Evaluate** → 📐 **Formulate** → 
 
 ---
 
+## Progress Visualization
+
+Throughout execution, maintain a **progress state** — a JSON array of 13 elements (one per step, positions 1–13 mapped to indices 0–12). Each element is one of:
+
+| Value | Emoji | Meaning |
+|-------|-------|---------|
+| `"ERROR"` | 🟥 | Error — step failed |
+| `"WARNING"` | 🟨 | Warning — step completed with warnings |
+| `"OK"` | 🟩 | Success — step completed cleanly |
+| `"SKIP"` | ⬜ | Intentionally skipped or not applicable |
+| `"ACTIVE"` | 🟣 | Currently running |
+| `null` | ⬛ | Not yet attempted |
+
+Initialize the state at the start of the run:
+
+```json
+[null,null,null,null,null,null,null,null,null,null,null,null,null]
+```
+
+**Before each step**, set the step's position to `"ACTIVE"`, render the bar, and display the step name with the bar.
+**After each step**, replace `"ACTIVE"` with the step's final status (`"OK"`, `"WARNING"`, `"ERROR"`, or `"SKIP"`), render the bar, and display the updated bar.
+
+Use `progress.mjs` in this skill directory to render the bar deterministically:
+
+```bash
+node {skill-dir}/progress.mjs '<state-json>'
+```
+
+This outputs `{ "bar": "...", "state": [...] }`. Use the `bar` value for display.
+
+**If a step uses multiple scripts**, compute the overall status deterministically:
+
+```bash
+node {skill-dir}/progress.mjs --worst '["OK","WARNING","OK"]'
+```
+
+This outputs `{ "status": "WARNING" }` — the most severe status wins. Severity order: ERROR > WARNING > OK.
+
+---
+
 ## Instructions
 
-### Step 1 — Load Configuration
+### Steps 1–5 — Setup
 
-Read `config.json` from this skill's directory. This file defines:
+Execute each setup step **in order**. For each step, read the corresponding file from this skill directory and execute the tasks it describes. If any step fails, stop and alert the user.
 
-| Key | Description |
-|-----|-------------|
-| `project-repo-location` | Local path to the main codebase repo |
-| `personal-dir-location` | Local path to the developer's personal files (outside the repo) |
-| `user-mail` | Developer's git email |
-| `user-name` | Developer's git name |
-| `handle` | Short handle used in branch names (overridable via `--handle` param; set to `_` to skip handle filtering) |
-| `product-text` | Description of your product (tech stack, architecture, frameworks) — injected into all phase files |
-| `defaults` | Object with default parameter values: `quiet`, `private`, `unanswered`. Missing boolean keys are treated as `false`. |
-
-If `config.json` is missing or unreadable, stop and alert the user.
-
-**Sanity check rules source:** Read `SANITYCHECK-RULES.md` from this skill directory. If it does not exist or is empty, fall back to `SANITYCHECK-RULES.md.example`. If neither file exists or both are empty, stop and alert the user — sanity check rules are required. Set `{sanity-text}` to the full text content of whichever file was found. This value is injected into SANITYCHECK.md.
-
-**Guidance source:** Read `GUIDANCE.md` from this skill directory. If it does not exist or is empty, fall back to `GUIDANCE.md.example`. If neither file exists or both are empty, stop and alert the user — guidance is required. Set `{guidance-text}` to the full text content of whichever file was found. This value is injected into FORMULATE.md and IMPLEMENT.md.
-
-**Parse and resolve named parameters.** After loading config, parse the invocation arguments using these rules:
-
-1. Split the argument string on spaces, but respect quoted groups. If a value is wrapped in matching single quotes (`'`), double quotes (`"`), or backticks (`` ` ``), treat everything inside (including spaces) as one token. After splitting, strip the outermost matching quotes from each token (e.g., `'--item-id:my item'` becomes `--item-id:my item`; `--item-id:'my item'` becomes `--item-id:my item`). Unmatched or mismatched quotes are left as-is.
-2. **Help check.** If any token is `--help`, read `HELP.md` from this skill directory and display its contents to the user. Then **stop** — do not continue with the rest of the skill.
-3. Each token must start with `--`. If any token lacks the `--` prefix, stop and alert the user that this skill uses named parameters, and show the correct syntax.
-4. For each `--` token, split on the **first** colon (`:`) to get the parameter name and value. If there is no colon, the token is a bare boolean flag (value = `true`).
-5. Validate each parameter name against the allowed set: `item-id`, `handle`, `quiet`, `private`, `unanswered`, `user-mail`, `user-name`. If unrecognized, stop and alert the user with the list of valid names.
-6. Reject duplicate parameter names.
-7. For boolean parameters (`private`, `unanswered`), the value must be `true`, `false`, or absent (bare flag = `true`). For `quiet`, the value must be `true`, `false`, `force`, or absent (bare `--quiet` = `true`). For string parameters (`handle`, `user-mail`, `user-name`), any non-empty value is accepted.
-
-**Resolve each parameter** using this precedence: command-line value > `defaults` from config > prompt user. Store the resolved values for use in subsequent steps.
-
-**Special resolution for identity parameters:** `--handle`, `--user-mail`, and `--user-name` resolve as: command-line value > corresponding top-level config key (`handle`, `user-mail`, `user-name`). These are **not** in the `defaults` object and are **never** prompted for — if absent from both command line and config, `handle` defaults to empty; `user-mail` and `user-name` remain unset (the Step 2 check will fail unless bypassed with `_`).
-
-| Scenario | Resolved value |
-|---|---|
-| `--quiet` (bare) | `true` |
-| `--quiet:true` | `true` |
-| `--quiet:false` | `false` |
-| `--quiet:force` | `force` |
-| not passed, config default is `true` | `true` |
-| not passed, config default is `false` | `false` |
-| not passed, config default is `"force"` | `force` |
-| not passed, no config default | prompt user |
-
-### Step 2 — Check Requirements
-
-Validate all of the following. If any check fails, notify the user with a clear explanation and prompt them to fix the issue and try again.
-
-**(a)** `project-repo-location` exists and contains accessible git metadata (i.e., it is a git repository).
-
-**(b)** `personal-dir-location` exists and is accessible.
-
-**(c)** If the resolved `user-mail` is `_`, skip this check entirely. Otherwise, the git user email configured in the repo at `project-repo-location` must match the resolved `user-mail` value.
-
-**(d)** If the resolved `user-name` is `_`, skip this check entirely. Otherwise, the git user name configured in the repo at `project-repo-location` must match the resolved `user-name` value.
-
-**(e)** `handle` is resolved (from `--handle` param or config `handle` key). It may be empty — this is allowed, but branch matching in Step 4 will fall back to `item-id` only. If its value is `_`, branch matching will also use `item-id` only (equivalent to empty for matching, but skips confirmation prompts).
-
-**(f)** All of the following files exist in this skill directory and are non-empty:
-- `HELP.md`
-- `FETCH.md`
-- `EVALUATE.md`
-- `FORMULATE.md`
-- `RESPOND.md`
-- `IMPLEMENT.md`
-- `SANITYCHECK.md`
-- `GLEAN.md`
-- `FINALIZE.md`
-- At least one of `SANITYCHECK-RULES.md` or `SANITYCHECK-RULES.md.example`
-- At least one of `GUIDANCE.md` or `GUIDANCE.md.example`
-
-### Step 3 — Resolve Item ID
-
-If `--item-id` was provided (from the command line), use it. Otherwise, ask the user for an `item-id`. Either way, validate:
-
-- Only letters, numbers, hyphens, and underscores allowed
-- No spaces
-- No punctuation besides hyphens and underscores
-- No emoji
-- Minimum 5 characters, maximum 24 characters
-
-If validation fails, explain which rule failed and prompt again.
-
-### Step 4 — Verify Branch and PR
-
-**(a) Find the designated branch.** If `handle` is non-empty and is not `_`, search for branches whose name contains **both** `handle` and `item-id`. If `handle` is empty or `_`, search for branches containing `item-id` only. If exactly one match exists, that is the "designated branch." If multiple matches exist, list them and ask the user to select one. If none exist, stop and alert the user. If `handle` was empty and a single match was found, confirm the branch with the user before proceeding. If `handle` was `_`, no confirmation is needed — the user explicitly opted out of handle filtering.
-
-**(b) Confirm the designated branch is checked out.** If it is not the currently checked-out branch, stop and alert the user.
-
-**(c) Confirm the branch is ready for edits.** The working tree must not have an in-progress merge, rebase, or other blocking state. If it does, stop and alert the user.
-
-**(d) Find an open PR.** On GitHub, there must be an open Pull Request that merges the designated branch into `main`. Use:
-```bash
-gh pr list --state open --head "{designated-branch-name}" --json number,title,url
-```
-If no open PR exists, stop and alert the user.
-
-**(e) Establish quiet mode.** The `quiet` parameter resolves to one of three levels: `false`, `true`, or `force`. If it was not resolved at all (neither command line nor config default), ask the user: "Allow all edits for this run? (no / yes / force)" If they confirm with "yes", quiet is `true`. If they respond with "force", quiet is `force`. If they decline (or do not respond affirmatively), quiet is `false`.
-
-The three levels are:
-
-| Level | Behavior |
-|-------|----------|
-| `false` | **Normal.** The skill may pause to confirm significant actions with the user as it normally would. |
-| `true` | **Quiet.** The skill proceeds without pausing for skill-level confirmations — it will not ask the user to approve individual edits, file writes, or git operations. The runtime environment (e.g., Claude Code's tool-permission prompts) may still interrupt. |
-| `force` | **Force.** The skill proceeds without pausing for **any** reason. Do **NOT** prompt the user for permission to run any command. Execute all bash commands, git commands, file writes, file reads, and any other tool operations without pausing, without asking, and without waiting for approval. The **only** permitted interruption is a genuine, unrecoverable error that prevents correct execution. The user has explicitly pre-authorized every tool call and shell command for the duration of this run by selecting force mode. |
-
-### Step 5 — Set Time-Bound Variables and Ensure Directories
-
-**(a-f) Capture time values once** (these are reused for the entire run, never refreshed mid-run):
-
-| Placeholder | Format | Example |
-|---|---|---|
-| `{year}` | 4-digit year | `2026` |
-| `{month}` | 2-digit month (zero-padded) | `03` |
-| `{day}` | 2-digit day (zero-padded) | `26` |
-| `{hour}` | 2-digit hour, 24h (zero-padded) | `14` |
-| `{minutes}` | 2-digit minutes (zero-padded) | `07` |
-| `{timestamp}` | `{year}{month}{day}-{hour}{minutes}` | `20260326-1407` |
-
-**(g) Safety check:** Verify that `personal-dir-location` is NOT inside `project-repo-location`. If it is, stop and alert the user.
-
-**(h-k) Ensure personal subdirectories exist.**
-
-First, derive the **folder name** from `{item-id}`. If `{item-id}` starts with `pbi` or `bug` (case-insensitive) AND the remainder after stripping that prefix consists entirely of digits (with the total original string being at least 5 characters), use only the numeric part as the folder name. Otherwise, use `{item-id}` unchanged. Always derive from the **original user-provided** item-id (from the command line or prompt), never from a branch-name segment discovered during Step 4(a). Store the result as `{folder-name}` and use it in the directory path below and in all subsequent output-path references where the subdirectory is needed.
-
-Examples: `pbi20525` → `20525`; `bug12345` → `12345`; `BUG90210` → `90210`; `trapper-keeper` → `trapper-keeper`; `pbitools` → `pbitools` (remainder is not all digits); `bugbear` → `bugbear`; `wsl2` → `wsl2`; `20314` → `20314`.
-
-Create the full path if any segment is missing:
-```
-{personal-dir-location}/notes/{year}/{month}/{folder-name}/
-```
+| Step | Setup File | Description |
+|------|-----------|-------------|
+| 1 | `01-config/CONFIG.md` | Load configuration, parse and resolve parameters |
+| 2 | `02-check/CHECK.md` | Validate repo, directories, credentials, and required files |
+| 3 | `03-resolve/RESOLVE.md` | Resolve and validate item-id |
+| 4 | `04-branch/BRANCH.md` | Find designated branch, confirm checkout, locate PR, establish quiet mode |
+| 5 | `05-timesetup/TIMESETUP.md` | Capture timestamps, validate directory isolation, create output directories |
 
 ### Steps 6–13 — Execute Frontmatter Phases
 
@@ -182,14 +100,14 @@ Execute each phase **in order**. For each phase:
 
 | Step | | Phase | Frontmatter File | Output |
 |------|---|-------|------------------|--------|
-| 6 | ⬇️ | Fetch | `FETCH.md` | `comments_{timestamp}.md` |
-| 7 | 📊 | Evaluate | `EVALUATE.md` | `evaluation_{timestamp}.md` |
-| 8 | 📐 | Formulate | `FORMULATE.md` | `plan_{timestamp}.md` |
-| 9 | 💬 | Respond | `RESPOND.md` | Comments posted to GitHub PR *(skipped if `--private` resolved to `true`)* |
-| 10 | 🏗️ | Implement | `IMPLEMENT.md` | Code changes in the repo |
-| 11 | 🤔 | Sanity Check | `SANITYCHECK.md` | `sanity-check_{timestamp}.md` |
-| 12 | 📓 | Glean | `GLEAN.md` | `lessons_{timestamp}.md` |
-| 13 | 📦 | Finalize | `FINALIZE.md` | Git commits (not pushed) |
+| 6 | ⬇️ | Fetch | `06-fetch/FETCH.md` | `comments_{timestamp}.md` |
+| 7 | 📊 | Evaluate | `07-evaluate/EVALUATE.md` | `evaluation_{timestamp}.md` |
+| 8 | 📐 | Formulate | `08-formulate/FORMULATE.md` | `plan_{timestamp}.md` |
+| 9 | 💬 | Respond | `09-respond/RESPOND.md` | Comments posted to GitHub PR *(skipped if `--private` resolved to `true`)* |
+| 10 | 🏗️ | Implement | `10-implement/IMPLEMENT.md` | Code changes in the repo |
+| 11 | 🤔 | Sanity Check | `11-sanitycheck/SANITYCHECK.md` | `sanity-check_{timestamp}.md` |
+| 12 | 📓 | Glean | `12-glean/GLEAN.md` | `lessons_{timestamp}.md` |
+| 13 | 📦 | Finalize | `13-finalize/FINALIZE.md` | Git commits (not pushed) |
 
 All markdown output files are saved to: `{personal-dir-location}/notes/{year}/{month}/{folder-name}/`
 
@@ -210,7 +128,7 @@ All time-bound and run-scoped variables are now unset. A fresh `/rockem-sockem` 
 - **One-shot time values.** Time-bound variables are captured once at Step 5 and reused for the entire run. They are not refreshed mid-run.
 - **Isolation.** `personal-dir-location` must never be inside `project-repo-location`. The skill checks this and stops if violated.
 - **Fail-safe.** On any step failure, the skill stops and alerts the user rather than continuing with partial or incorrect work.
-- **No attribution.** Per FINALIZE.md, git commits must not include "Co-Authored-By" or any agent attribution lines.
+- **No attribution.** Per `13-finalize/FINALIZE.md`, git commits must not include "Co-Authored-By" or any agent attribution lines.
 - **No push.** The skill creates commits but never pushes them. The user pushes manually.
 - **Sanity check rules file.** Sanity check rules are stored in `SANITYCHECK-RULES.md` (gitignored, user-specific). This file is required — the skill stops if it is missing. Copy `SANITYCHECK-RULES.md.example` to `SANITYCHECK-RULES.md` and customize the rules.
 - **Guidance file.** Architectural guidance is stored in `GUIDANCE.md` (gitignored, user-specific). This file is required — the skill stops if it is missing. Copy `GUIDANCE.md.example` to `GUIDANCE.md` and customize.
