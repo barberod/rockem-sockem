@@ -16,8 +16,8 @@
  *
  * Output (JSON):
  * {
- *   "bar": "🟩⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛",
- *   "state": ["OK",null,null,null,null,null,null,null,null,null,null,null,null]
+ *   "state": ["OK",null,null,null,null,null,null,null,null,null,null,null,null],
+ *   "bar": "🟩⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛"
  * }
  *
  * Can also be used to compute the worst status from multiple results:
@@ -62,6 +62,6 @@ if (args[0] === "--worst") {
 } else {
   const state = JSON.parse(args[0]);
   process.stdout.write(
-    JSON.stringify({ bar: renderBar(state), state }, null, 2)
+    JSON.stringify({ state, bar: renderBar(state) }, null, 2)
   );
 }
