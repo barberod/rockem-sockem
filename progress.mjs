@@ -5,22 +5,23 @@
  *
  * Deterministic utility for rendering and updating the 13-step progress bar.
  *
- * Usage:
- *   node progress.mjs <state-json>
+ * Usage (compact format — preferred):
+ *   node progress.mjs ###~_________
  *
- * <state-json> is a JSON string representing an array of 13 status values.
- * Each value is one of: "OK", "WARNING", "ERROR", "SKIP", "ACTIVE", or null (not yet attempted).
+ * Each character maps to a status:
+ *   # = OK, * = WARNING, ! = ERROR, - = SKIP, ~ = ACTIVE, _ = not yet attempted
  *
- * Example:
- *   node progress.mjs '["OK",null,null,null,null,null,null,null,null,null,null,null,null]'
+ * Usage (legacy JSON format — still supported):
+ *   node progress.mjs '["OK","OK","OK","ACTIVE",null,null,null,null,null,null,null,null,null]'
  *
  * Output (JSON):
  * {
- *   "state": ["OK",null,null,null,null,null,null,null,null,null,null,null,null],
- *   "bar": "🟩⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛"
+ *   "state": ["OK","OK","OK","ACTIVE",null,null,null,null,null,null,null,null,null],
+ *   "bar": "🟩🟩🟩🟣⬛⬛⬛⬛⬛⬛⬛⬛⬛"
  * }
  *
- * Can also be used to compute the worst status from multiple results:
+ * Worst-status mode:
+ *   node progress.mjs --worst #*#
  *   node progress.mjs --worst '["OK","WARNING","OK"]'
  *
  * Output:
@@ -38,7 +39,25 @@ const EMOJI = {
   null: "⬛",
 };
 
+const COMPACT_TO_STATUS = {
+  "#": "OK",
+  "*": "WARNING",
+  "!": "ERROR",
+  "-": "SKIP",
+  "~": "ACTIVE",
+  _: null,
+};
+
 const SEVERITY = { OK: 0, WARNING: 1, ERROR: 2 };
+
+function parseInput(raw) {
+  if (raw.startsWith("[")) {
+    return JSON.parse(raw);
+  }
+  return [...raw].map((ch) =>
+    ch in COMPACT_TO_STATUS ? COMPACT_TO_STATUS[ch] : null
+  );
+}
 
 function renderBar(state) {
   return state.map((s) => EMOJI[s] ?? EMOJI["null"]).join("");
@@ -57,10 +76,10 @@ function worstOf(statuses) {
 const args = process.argv.slice(2);
 
 if (args[0] === "--worst") {
-  const statuses = JSON.parse(args[1]);
+  const statuses = parseInput(args[1]);
   process.stdout.write(JSON.stringify({ status: worstOf(statuses) }));
 } else {
-  const state = JSON.parse(args[0]);
+  const state = parseInput(args[0]);
   process.stdout.write(
     JSON.stringify({ state, bar: renderBar(state) }, null, 2)
   );

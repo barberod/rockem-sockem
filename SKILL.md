@@ -54,18 +54,27 @@ Initialize the state at the start of the run:
 **Before each step**, set the step's position to `"ACTIVE"`, render the bar, and display the step name with the bar.
 **After each step**, replace `"ACTIVE"` with the step's final status (`"OK"`, `"WARNING"`, `"ERROR"`, or `"SKIP"`), render the bar, and display the updated bar.
 
-Use `progress.mjs` in this skill directory to render the bar deterministically:
+Use `progress.mjs` in this skill directory to render the bar deterministically. Use the **compact format** — a single string of characters, one per step:
+
+| Char | Status |
+|------|--------|
+| `#` | OK |
+| `*` | WARNING |
+| `!` | ERROR |
+| `-` | SKIP |
+| `~` | ACTIVE |
+| `_` | not yet attempted |
 
 ```bash
-node {skill-dir}/progress.mjs '<state-json>'
+node {skill-dir}/progress.mjs ###~_________
 ```
 
-This outputs `{ "bar": "...", "state": [...] }`. Use the `bar` value for display.
+This outputs `{ "bar": "🟩🟩🟩🟣⬛⬛⬛⬛⬛⬛⬛⬛⬛", "state": [...] }`. Use the `bar` value for display.
 
 **If a step uses multiple scripts**, compute the overall status deterministically:
 
 ```bash
-node {skill-dir}/progress.mjs --worst '["OK","WARNING","OK"]'
+node {skill-dir}/progress.mjs --worst #*#
 ```
 
 This outputs `{ "status": "WARNING" }` — the most severe status wins. Severity order: ERROR > WARNING > OK.
